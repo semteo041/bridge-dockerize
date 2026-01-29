@@ -22,14 +22,6 @@ module.exports = {
             terminal_total_difficulty: "58750000000000000000000",
             confirm: 10
         },
-        icon: {
-            api: 'https://ctz.solidwallet.io/api/v3',
-            rpc: 'https://ctz.solidwallet.io/api/v3',
-            debug: 'https://ctz.solidwallet.io/api/debug/v3',
-            version: 3,
-            nid: 1,
-            confirm: 10
-        },
         klaytn: {
             is_kas: false,
             kas: {
@@ -37,7 +29,7 @@ module.exports = {
                 rpc: "https://node-api.klaytnapi.com/v1/klaytn",
                 chain_id: 8217
             },
-            rpc: ["https://public-en.node.kaia.io", "https://kaia.blockpi.network/v1/rpc/public", "https://1rpc.io/klay"],
+            rpc: ["https://public-en.node.kaia.io", "https://kaia.blockpi.network/v1/rpc/public", "https://rpc.ankr.com/kaia"],
             confirm: 10
         },
         silicon: {
@@ -46,7 +38,7 @@ module.exports = {
             confirm: 10
         },
         matic: {
-            rpc : ["https://polygon-rpc.com", "https://polygon-bor-rpc.publicnode.com", "http://prd-matic-bor-mainnet-rpc.node.ozys.work:8545", "https://1rpc.io/matic"],
+            rpc : ["https://polygon-rpc.com", "https://polygon-bor-rpc.publicnode.com", "http://prd-matic-bor-mainnet-rpc.node.ozys.work:8545"],
             chain_id: '0x89',
             confirm: 10
         },

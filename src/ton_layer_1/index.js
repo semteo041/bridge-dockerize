@@ -380,7 +380,7 @@ class TONLayer1Validator {
                 if(event.destination !== '') continue;
                 if(!event.source || event.source !== vault) continue;
                 if(!event.value || event.value !== '0') continue;
-                if(!event.msg_data || !event.msg_data.body || event.msg_data['@type'] !== 'msg.dataRaw') continue;
+                if(!event.msg_data || !event.msg_data.body) continue;
 
                 const slice = Slice.fromCell(Cell.fromBoc(Buffer.from(event.msg_data.body, 'base64'))[0]);
                 let opCode = null

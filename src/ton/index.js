@@ -181,43 +181,21 @@ class TONValidator {
             logger.ton.info(`LockRelay list ${info.length === 0 ? 'is empty.' : 'length: ' + info.length.toString()}`);
 
             for (let result of info) {
-                const originTxhash = result.origin_thash;
-                let data = {
-                    fromChain: this.chainName.toUpperCase(),
-                    toChain: result.toChain,
-                    fromAddr: result.fromAddr,
-                    toAddr: result.toAddr,
-                    token: result.token,
-                    bytes32s: [this.govInfo.id, originTxhash],
-                    uints: [result.amount, result.decimals, result.depositId, result.lt], // result.lt?
-                    data: result.data || '0x'
-                };
-
                 const tonMinter = this.tonMinter;
                 const ton = await this.getTonApi();
 
-                let txHash = data.bytes32s[1];
+                let txHash = result.origin_thash;
                 txHash = Buffer.from(txHash.replace("0x",""), 'hex').toString('base64');
-                let lt = data.uints[3];
+                let lt = result.data;
                 if(!lt) continue;
 
                 let tx = await ton.getTransaction(tonMinter, txHash, lt);
                 if(!tx){
-                    logger.ton.error(`Skip relay ${data.bytes32s[1]}:${data.uints[3]}`);
+                    logger.ton.error(`Skip relay ${tonMinter}:${txHash}:${lt}, cannot find transaction`);
                     continue;
                 }
 
-                if(!bridgeUtils.isValidAddress(data.toChain, data.toAddr)){
-                    logger.ton.error(`Invalid toAddress ( ${data.toChain}, ${data.toAddr} )`);
-                    continue;
-                }
-
-                if(data.data && !bridgeUtils.isValidData(data.toChain, data.data)){
-                    logger.ton.error(`Invalid data ( ${data.toChain}, ${data.data} )`);
-                    continue;
-                }
-
-                await this.validateRelayedData(data);
+                await this.validateRelayedData(result);
             }
         } catch (e) {
             logger.ton.error(`lock-relay api error: ${e.message}`);
@@ -234,18 +212,17 @@ class TONValidator {
         const govInfo = this.govInfo;
         const REQUEST_SWAP = this.requestSwapABI;
 
-        let txHash = data.bytes32s[1];
+        let txHash = data.origin_thash;
         txHash = Buffer.from(txHash.replace("0x",""), 'hex').toString('base64');
 
-        let depositId = data.uints[2];
-        let lt = data.uints[3];
+        let lt = data.data;
         if(lt.dcomp(UINT64_MAX) !== -1){
             logger.ton.error(`Invalid logical time: ${lt}`);
             return;
         }
 
         let tx = await ton.getTransaction(tonMinter, txHash, lt);
-        if(!tx || !tx.data || !tx.transaction_id){
+        if(!tx || !tx.transaction_id || (!tx.data && !tx.description && !tx.in_msg)) {
             logger.ton.error(`getTransaction error: ${ton.rpc} ${txHash}, ${lt}`);
             return;
         }
@@ -256,7 +233,7 @@ class TONValidator {
             return;
         }
 
-        let { description, inMessage } = await ton.parseTransaction(tx.data);
+        let { description, inMessage } = await ton.parseTransaction(tx.data, tx.description, tx.in_msg);
         if(!description || !description.computePhase || !description.actionPhase){
             logger.ton.error(`Invalid description: ${txHash}, ${lt}`);
             return;
@@ -285,7 +262,7 @@ class TONValidator {
             if(event.destination !== '') continue;
             if(!event.source || event.source !== tonMinter) continue;
             if(!event.value || event.value !== '0') continue;
-            if(!event.msg_data || !event.msg_data.body || event.msg_data['@type'] !== 'msg.dataRaw') continue;
+            if(!event.msg_data || !event.msg_data.body) continue;
 
             const slice = Slice.fromCell(Cell.fromBoc(Buffer.from(event.msg_data.body, 'base64'))[0]);
             let opCode = null
@@ -336,7 +313,6 @@ class TONValidator {
                 }
             }
 
-            if(parseInt(obj.depositId) !== parseInt(depositId)) continue;
             res = obj;
         }
         if(!res) {
@@ -375,14 +351,14 @@ class TONValidator {
 
         let isConfirmed = parseInt(currentBlock) - parseInt(txBlock) >= config.system.tonConfirmCount;
         if(!isConfirmed){
-            logger.ton.error(`depositId(${data.uints[2]}) is invalid. isConfirmed: ${isConfirmed}`);
+            logger.ton.error(`depositId(${res.depositId}) is invalid. isConfirmed: ${isConfirmed}`);
             return;
         }
 
         return {
             ...res,
             outMsgs: out_msgs,
-            txhash: data.bytes32s[1],
+            txhash: data.origin_thash,
             fromAddr,
             toChain,
             lt,
